@@ -11,7 +11,6 @@ class PokedexView(View):
         self.pokemon_name = pokemon_name.lower()
         self.interaction: discord.Interaction = interaction
         self.page = 0
-        self.message = None  # Stockage du message pour éviter les erreurs d'interaction expirée
         
         self.data = self.fetch_data(f"https://pokeapi.co/api/v2/pokemon/{self.pokemon_name}")
         self.species_data = self.fetch_data(f"https://pokeapi.co/api/v2/pokemon-species/{self.pokemon_name}")
@@ -31,7 +30,7 @@ class PokedexView(View):
         """Crée un embed contenant les informations générales du Pokémon."""
         embed = Embed(title=f"{self.data['name'].capitalize()} | N° {self.data['id']}", color=0xE63946)
         embed.set_thumbnail(url=self.data['sprites']['front_default'])
-        embed.set_author(name="Pokédex", icon_url="https://i.postimg.cc/1XhgQCcj/541-5418323-gameboy-drawing-electronics-inside-of-a-pokedex-hd-removebg-preview.png")
+        embed.set_author(name="Pokédex", icon_url="https://i.postimg.cc/1XhgQCcj/541-5418323-gameboy-drawing-electronics-inside-of-a-pokedex-hd-removebg-preview.png", url="https://www.pokemon.com/us/pokedex")
         
         # Informations générales
         description = self.get_flavor_text()
@@ -58,7 +57,7 @@ class PokedexView(View):
         """Crée un embed contenant les statistiques du Pokémon."""
         embed = Embed(title=f"{self.data['name'].capitalize()} | N°{self.data['id']}", color=discord.Color.red())
         embed.set_thumbnail(url=self.data['sprites']['front_default'])
-        embed.set_author(name="Pokédex", icon_url="https://i.postimg.cc/1XhgQCcj/541-5418323-gameboy-drawing-electronics-inside-of-a-pokedex-hd-removebg-preview.png")
+        embed.set_author(name="Pokédex", icon_url="https://i.postimg.cc/1XhgQCcj/541-5418323-gameboy-drawing-electronics-inside-of-a-pokedex-hd-removebg-preview.png", url="https://www.pokemon.com/us/pokedex")
         
         embed.description = f"{self.get_flavor_text()}\n\n📈 `Statistiques`"
         
