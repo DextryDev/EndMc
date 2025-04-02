@@ -5,21 +5,14 @@ from discord.ui import View, Button
 import requests
 
 class PokedexView(View):
-    """
-    Une vue interactive pour afficher les informations d'un Pokémon.
-    - Contient deux pages : Informations générales et Statistiques.
-    - Récupère les données depuis l'API PokéAPI.
-    - Affiche un embed interactif avec des boutons pour naviguer entre les pages.
-    - Expire après 1 heure d'inactivité pour économiser les ressources.
-    """
-    def __init__(self, bot, pokemon_name):
-        super().__init__(timeout=3600)  # Timeout de 1 heure
+    def __init__(self, bot, pokemon_name, interaction):
+        super().__init__(timeout=None)  # Timeout de 15min
         self.bot = bot
         self.pokemon_name = pokemon_name.lower()
+        self.interaction: discord.Interaction = interaction
         self.page = 0
-        self.message = None  # Stocke le message à modifier
-
-        # Récupération des données
+        self.message = None  # Stockage du message pour éviter les erreurs d'interaction expirée
+        
         self.data = self.fetch_data(f"https://pokeapi.co/api/v2/pokemon/{self.pokemon_name}")
         self.species_data = self.fetch_data(f"https://pokeapi.co/api/v2/pokemon-species/{self.pokemon_name}")
         
@@ -40,6 +33,7 @@ class PokedexView(View):
         embed.set_thumbnail(url=self.data['sprites']['front_default'])
         embed.set_author(name="Pokédex", icon_url="https://i.postimg.cc/1XhgQCcj/541-5418323-gameboy-drawing-electronics-inside-of-a-pokedex-hd-removebg-preview.png")
         
+        # Informations générales
         description = self.get_flavor_text()
         types = self.get_types()
         abilities = self.get_abilities()
@@ -69,7 +63,12 @@ class PokedexView(View):
         embed.description = f"{self.get_flavor_text()}\n\n📈 `Statistiques`"
         
         stat_emojis = {
-            "hp": "❤️", "attack": "⚔️", "defense": "🛡️", "special-attack": "🔮", "special-defense": "🛡️", "speed": "⚡"
+            "hp": "❤️",
+            "attack": "⚔️",
+            "defense": "🛡️",
+            "special-attack": "🔮",
+            "special-defense": "🛡️",
+            "speed": "⚡"
         }
         
         for stat in self.data['stats']:
@@ -102,11 +101,13 @@ class PokedexView(View):
         egg_groups = [egg_group['name'].capitalize() for egg_group in self.species_data.get('egg_groups', [])]
         return ', '.join(egg_groups) if egg_groups else 'Inconnu'
     
-    async def update_message(self):
+    async def update_message(self, interaction: discord.Interaction):
         """Met à jour l'embed affiché avec la page actuelle."""
         self.update_buttons()
-        if self.message:
-            await self.message.edit(embed=self.generate_embed(), view=self)
+        try:
+            await interaction.response.edit_message(embed=self.generate_embed(), view=self)
+        except discord.errors.HTTPException:
+            pass  # Éviter de planter si le message n'est plus modifiable
     
     def update_buttons(self):
         """Met à jour les boutons de navigation."""
@@ -123,14 +124,11 @@ class PokedexView(View):
     
     async def change_page(self, interaction: discord.Interaction, page_index):
         """Change de page si l'utilisateur est le bon."""
-        self.page = page_index
-        await interaction.response.defer()
-        await self.update_message()
-    
-    async def on_timeout(self):
-        """Quand la vue expire après 1h, elle est supprimée pour économiser les ressources."""
-        if self.message:
-            await self.message.edit(view=None)
+        if interaction.user.id == self.interaction.user.id:
+            self.page = page_index
+            await self.update_message(interaction)
+        else:
+            await interaction.response.send_message("❌ Ce n'est pas votre interaction !", ephemeral=True)
 
 class PokedexGroup(app_commands.Group):
     """Groupe de commandes pour le Pokédex."""
@@ -140,12 +138,9 @@ class PokedexGroup(app_commands.Group):
 
     @app_commands.command(name="pokemon", description="Obtenez des informations sur un Pokémon.")
     async def pokemon(self, interaction: discord.Interaction, pokemon_name: str):
-        await interaction.response.defer()
-        view = PokedexView(self.bot, pokemon_name)
-
+        view = PokedexView(self.bot, pokemon_name, interaction)
         if view.data and view.species_data:
-            message = await interaction.followup.send(embed=view.generate_embed(), view=view)
-            view.message = message
+            await interaction.response.send_message(embed=view.generate_embed(), view=view)
         else:
             await interaction.followup.send(f"❌ Pokémon inconnu: '{pokemon_name}'.", ephemeral=True)
 
