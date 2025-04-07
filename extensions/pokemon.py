@@ -6,7 +6,7 @@ import requests
 
 class PokedexView(View):
     def __init__(self, bot, pokemon_name, interaction):
-        super().__init__(timeout=None)  # Timeout de 15min
+        super().__init__(timeout=None)
         self.bot = bot
         self.pokemon_name = pokemon_name.lower()
         self.interaction: discord.Interaction = interaction
